@@ -1,0 +1,12 @@
+{"request_id":"r1","user_id":"hot","arrival_time_ns":0,"history_tokens":1000,"incremental_tokens":2,"history_version":"v0","next_history_version":"v1","candidate_count":500}
+{"request_id":"r2","user_id":"cold-a","arrival_time_ns":1000000000,"history_tokens":64,"incremental_tokens":1,"history_version":"v0","next_history_version":"v1","candidate_count":500}
+{"request_id":"r3","user_id":"hot","arrival_time_ns":2000000000,"history_tokens":1002,"incremental_tokens":2,"history_version":"v1","next_history_version":"v2","candidate_count":500}
+{"request_id":"r4","user_id":"cold-b","arrival_time_ns":3000000000,"history_tokens":128,"incremental_tokens":1,"history_version":"v0","next_history_version":"v1","candidate_count":500}
+{"request_id":"r5","user_id":"hot","arrival_time_ns":4000000000,"history_tokens":1004,"incremental_tokens":2,"history_version":"v2","next_history_version":"v3","candidate_count":500}
+{"request_id":"r6","user_id":"warm","arrival_time_ns":5000000000,"history_tokens":512,"incremental_tokens":1,"history_version":"v0","next_history_version":"v1","candidate_count":500}
+{"request_id":"r7","user_id":"hot","arrival_time_ns":6000000000,"history_tokens":1006,"incremental_tokens":2,"history_version":"v3","next_history_version":"v4","candidate_count":500}
+{"request_id":"r8","user_id":"warm","arrival_time_ns":7000000000,"history_tokens":513,"incremental_tokens":1,"history_version":"v1","next_history_version":"v2","candidate_count":500}
+{"request_id":"r9","user_id":"hot","arrival_time_ns":8000000000,"history_tokens":1008,"incremental_tokens":2,"history_version":"v4","next_history_version":"v5","candidate_count":500}
+{"request_id":"r10","user_id":"warm","arrival_time_ns":9000000000,"history_tokens":514,"incremental_tokens":1,"history_version":"v2","next_history_version":"v3","candidate_count":500}
+{"request_id":"r11","user_id":"hot","arrival_time_ns":10000000000,"history_tokens":1010,"incremental_tokens":2,"history_version":"v5","next_history_version":"v6","candidate_count":500}
+{"request_id":"r12","user_id":"cold-c","arrival_time_ns":11000000000,"history_tokens":32,"incremental_tokens":1,"history_version":"v0","next_history_version":"v1","candidate_count":500}

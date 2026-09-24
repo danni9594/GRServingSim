@@ -6,6 +6,14 @@ spawns the ASTRA-Sim subprocess, and runs the iteration loop:
 -> scheduler.add_done`` until every request completes.
 """
 
+import sys
+
+# GR has its own request schema and stage scheduler, sharing ASTRA execution.
+# Dispatch before importing LLM-specific model/profile dependencies.
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "gr":
+    from serving.gr.cli import main as gr_main
+    raise SystemExit(gr_main(sys.argv[2:]))
+
 import os
 import subprocess
 import argparse

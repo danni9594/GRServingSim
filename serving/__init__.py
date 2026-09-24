@@ -23,4 +23,6 @@ Module map:
         utils.py                model config loading, formatting
         logger.py               rich-based logger + stdio capture
     run.sh                      example invocations across cluster configs
+    gr/                         whole-user KV / LRU-K GR ASTRA backend
+                                (python -m serving gr --help)
 """

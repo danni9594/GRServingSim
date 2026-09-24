@@ -1,0 +1,44 @@
+{
+  "model": {
+    "name": "openonerec-illustrative-1.7b",
+    "paradigm": "openonerec",
+    "kv_bytes_per_token": 196608,
+    "linear_flops_per_token": 3400000000,
+    "attention_flops_per_pair": 196608,
+    "semantic_vocab_sizes": [
+      8192,
+      8192,
+      8192
+    ],
+    "semantic_head_flops_per_logit": 4096,
+    "calibration_note": "Illustrative 2P linear FLOPs for 1.7B active parameters; 24 layers x 2048 KV width in BF16 and three 8192-entry codebooks. These dimensions/codebooks are not specified in the manuscript. Calibrate against the intended OpenOneRec checkpoint.",
+    "num_layers": 24,
+    "weight_bytes": 3400000000
+  },
+  "peak_flops": 2000000000000000,
+  "cache_k": 1,
+  "block_tokens": 16,
+  "latency_mode": "paper_roofline",
+  "tiers": [
+    {
+      "name": "HBF",
+      "capacity_bytes": 3580600000000,
+      "read_bandwidth_bytes_per_s": 11200000000000,
+      "write_bandwidth_bytes_per_s": 336000000000,
+      "endurance_cycles": 100000,
+      "astra_location": "storage"
+    }
+  ],
+  "metadata": {
+    "source": "User-provided manuscript, Sections II-IV, Eqs. (1)-(6); user specifies exactly three semantic decoding steps",
+    "capacity_derivation": "7 x 512 GB minus 3.4 GB illustrative BF16 weights; decimal GB. One separate 36 GB HBM stack is the active workspace. HBM-only/CPU variants additionally reserve 36 GB HBM for active KV.",
+    "scope": "One ASTRA NPU; FCFS requests, chunked prefill, per-layer projection/attention/output DAGs. Explicit weight/KV traffic. Whole-user cache capacities exclude weights and a 36 GB active KV workspace. Coefficients and projection split require calibration; activations and kernel launch overhead are not modeled."
+  },
+  "astra": {
+    "prefill_chunk_tokens": 2048,
+    "workspace_capacity_bytes": 36000000000,
+    "workspace_read_bandwidth_bytes_per_s": 1600000000000,
+    "workspace_write_bandwidth_bytes_per_s": 1600000000000,
+    "weight_location": "storage"
+  }
+}

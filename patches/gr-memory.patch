@@ -1,0 +1,133 @@
+diff --git a/AnalyticalMemory.cc b/AnalyticalMemory.cc
+index 3fbc669..4c3e0fd 100644
+--- a/AnalyticalMemory.cc
++++ b/AnalyticalMemory.cc
+@@ -7,6 +7,7 @@ the root directory of this source tree.
+ #include <json/json.hpp>
+ #include <fstream>
+ #include <iostream>
++#include <cmath>
+ #include "astra-sim/system/Common.hh"
+ #include "astra-sim/system/WorkloadLayerHandlerData.hh"
+ #include "astra-sim/system/AstraMemoryAPI.hh"
+@@ -78,6 +79,20 @@ AnalyticalMemory::AnalyticalMemory(
+     mem_bw = j["mem-bw"];
+   }
+ 
++  directional_timing = j.contains("read-bw") || j.contains("write-bw") ||
++      j.contains("read-latency") || j.contains("write-latency");
++  read_bw = j.value("read-bw", static_cast<double>(mem_bw));
++  write_bw = j.value("write-bw", static_cast<double>(mem_bw));
++  read_latency = j.value("read-latency", static_cast<double>(mem_latency));
++  write_latency = j.value("write-latency", static_cast<double>(mem_latency));
++  if (directional_timing && (!std::isfinite(read_bw) || read_bw <= 0 ||
++      !std::isfinite(write_bw) || write_bw <= 0 ||
++      !std::isfinite(read_latency) || read_latency < 0 ||
++      !std::isfinite(write_latency) || write_latency < 0)) {
++    cerr << "Invalid directional memory timing" << endl;
++    exit(1);
++  }
++
+   num_devices = 1;
+   if (j.contains("num-devices")) {
+     num_devices = j["num-devices"];
+@@ -142,7 +157,7 @@ void AnalyticalMemory::issue(
+       PendingMemoryRequest pmr(tensor_size, wlhd);
+       pim_pending_requests[queue_idx].push_back(pmr);
+     } else {
+-      uint64_t load_store_time = get_mem_runtime(tensor_size); // new tensors that need to be load/stored in pim
++      uint64_t load_store_time = get_mem_runtime(tensor_size, wlhd->is_write); // new tensors that need to be load/stored in pim
+       uint64_t runtime = wlhd->pim_runtime + load_store_time;
+ 
+       Sys* sys = sys_map[sys_id];
+@@ -166,7 +181,7 @@ void AnalyticalMemory::issue(
+         PendingMemoryRequest pmr(tensor_size, wlhd);
+         pending_requests[device_id].push_back(pmr);
+       } else {
+-        uint64_t runtime = get_mem_runtime(tensor_size);
++        uint64_t runtime = get_mem_runtime(tensor_size, wlhd->is_write);
+ 
+         Sys* sys = sys_map[sys_id];
+ 
+@@ -177,7 +192,7 @@ void AnalyticalMemory::issue(
+         ongoing_transaction[device_id] = true;
+       }
+     } else if (mem_type == PER_NPU_MEMORY_EXPANSION) {
+-      uint64_t runtime = get_mem_runtime(tensor_size);
++      uint64_t runtime = get_mem_runtime(tensor_size, wlhd->is_write);
+       Sys* sys = sys_map[sys_id];
+       sys->register_event(wlhd->workload, EventType::General, wlhd, runtime);
+     } else if (mem_type == MEMORY_POOL) {
+@@ -185,7 +200,7 @@ void AnalyticalMemory::issue(
+         PendingMemoryRequest pmr(tensor_size, wlhd);
+         pending_requests[device_id].push_back(pmr);
+       } else {
+-        uint64_t runtime = get_mem_runtime(tensor_size);
++        uint64_t runtime = get_mem_runtime(tensor_size, wlhd->is_write);
+ 
+         Sys* sys = sys_map[sys_id];
+ 
+@@ -211,7 +226,7 @@ void AnalyticalMemory::call(EventType type, CallData* data) {
+     if (!pim_pending_requests[queue_idx].empty()) {
+       PendingMemoryRequest pmr = pim_pending_requests[queue_idx].front();
+       pim_pending_requests[queue_idx].pop_front();
+-      uint64_t load_store_time = get_mem_runtime(pmr.tensor_size); // new tensors that need to be load/stored in pim
++      uint64_t load_store_time = get_mem_runtime(pmr.tensor_size, pmr.wlhd->is_write); // new tensors that need to be load/stored in pim
+       uint64_t runtime = pmr.wlhd->pim_runtime + load_store_time;
+       Sys* sys = sys_map[pmr.wlhd->sys_id];
+ 
+@@ -233,7 +248,7 @@ void AnalyticalMemory::call(EventType type, CallData* data) {
+         PendingMemoryRequest pmr = pending_requests[device_id].front();
+         pending_requests[device_id].pop_front();
+ 
+-        uint64_t runtime = get_mem_runtime(pmr.tensor_size);
++        uint64_t runtime = get_mem_runtime(pmr.tensor_size, pmr.wlhd->is_write);
+ 
+         Sys* sys = sys_map[pmr.wlhd->sys_id];
+ 
+@@ -251,7 +266,7 @@ void AnalyticalMemory::call(EventType type, CallData* data) {
+         PendingMemoryRequest pmr = pending_requests[device_id].front();
+         pending_requests[device_id].pop_front();
+ 
+-        uint64_t runtime = get_mem_runtime(pmr.tensor_size);
++        uint64_t runtime = get_mem_runtime(pmr.tensor_size, pmr.wlhd->is_write);
+ 
+         Sys* sys = sys_map[pmr.wlhd->sys_id];
+ 
+@@ -268,7 +283,12 @@ void AnalyticalMemory::call(EventType type, CallData* data) {
+   }
+ }
+ 
+-uint64_t AnalyticalMemory::get_mem_runtime(uint64_t tensor_size) {
++uint64_t AnalyticalMemory::get_mem_runtime(uint64_t tensor_size, bool is_write) {
++  if (directional_timing) {
++    return static_cast<uint64_t>(std::ceil(
++        (is_write ? write_latency : read_latency) +
++        static_cast<double>(tensor_size) / (is_write ? write_bw : read_bw)));
++  }
+   uint64_t runtime = mem_latency
+       + static_cast<uint64_t>((static_cast<double>(tensor_size) / mem_bw));
+   return runtime;
+diff --git a/AnalyticalMemory.hh b/AnalyticalMemory.hh
+index aad188f..ad9fc15 100644
+--- a/AnalyticalMemory.hh
++++ b/AnalyticalMemory.hh
+@@ -54,7 +54,7 @@ class AnalyticalMemory : public AstraSim::AstraMemoryAPI, public AstraSim::Calla
+       uint64_t tensor_size,
+       AstraSim::WorkloadLayerHandlerData* wlhd);
+   void call(AstraSim::EventType type, AstraSim::CallData* data);
+-  uint64_t get_mem_runtime(uint64_t tensor_size);
++  uint64_t get_mem_runtime(uint64_t tensor_size, bool is_write = false);
+   AstraSim::MemoryLocationType get_memory_location_type() const override { return mem_loc_type; }
+ 
+  private:
+@@ -62,6 +62,9 @@ class AnalyticalMemory : public AstraSim::AstraMemoryAPI, public AstraSim::Calla
+   AstraSim::MemoryLocationType mem_loc_type; 
+   uint64_t mem_latency; // memory access latency in nanosec
+   uint64_t mem_bw; // memory bandwidth in GB/sec
++  bool directional_timing;
++  double read_bw, write_bw; // bytes/ns (decimal GB/s)
++  double read_latency, write_latency; // ns
+   uint32_t num_devices; // number of devices for this memory level
+   uint32_t pim_channels; // number of PIM channels for this memory level
+   std::vector<bool> ongoing_transaction;

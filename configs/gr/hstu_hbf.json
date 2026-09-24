@@ -1,0 +1,39 @@
+{
+  "model": {
+    "name": "hstu-illustrative-10b",
+    "paradigm": "hstu",
+    "kv_bytes_per_token": 983040,
+    "linear_flops_per_token": 20000000000,
+    "attention_flops_per_pair": 983040,
+    "score_flops_per_candidate": 12288,
+    "calibration_note": "Illustrative 2P linear FLOPs for 10B active parameters; KV/attention assume 40 layers x 6144 KV width in BF16. The manuscript does not specify these dimensions. Replace with measured HSTU coefficients before claiming quantitative reproduction.",
+    "num_layers": 40,
+    "weight_bytes": 20000000000
+  },
+  "peak_flops": 2000000000000000,
+  "cache_k": 1,
+  "block_tokens": 16,
+  "latency_mode": "paper_roofline",
+  "tiers": [
+    {
+      "name": "HBF",
+      "capacity_bytes": 3564000000000,
+      "read_bandwidth_bytes_per_s": 11200000000000,
+      "write_bandwidth_bytes_per_s": 336000000000,
+      "endurance_cycles": 100000,
+      "astra_location": "storage"
+    }
+  ],
+  "metadata": {
+    "source": "User-provided manuscript, Sections II-IV, Eqs. (1)-(6)",
+    "capacity_derivation": "7 x 512 GB minus 20 GB illustrative BF16 weights; decimal GB. One separate 36 GB HBM stack is the active workspace. HBM-only/CPU variants additionally reserve 36 GB HBM for active KV.",
+    "scope": "One ASTRA NPU; FCFS requests, chunked prefill, per-layer projection/attention/output DAGs. Explicit weight/KV traffic. Whole-user cache capacities exclude weights and a 36 GB active KV workspace. Coefficients and projection split require calibration; activations and kernel launch overhead are not modeled."
+  },
+  "astra": {
+    "prefill_chunk_tokens": 2048,
+    "workspace_capacity_bytes": 36000000000,
+    "workspace_read_bandwidth_bytes_per_s": 1600000000000,
+    "workspace_write_bandwidth_bytes_per_s": 1600000000000,
+    "weight_location": "storage"
+  }
+}

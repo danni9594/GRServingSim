@@ -6,7 +6,6 @@ from time import time
 from .request import *
 from .logger import get_logger
 from .run_paths import input_path
-from .trace_generator import indexed_cols, write_trace
 
 logger = get_logger("GraphGenerator")
 
@@ -136,6 +135,15 @@ def _get_llm_converter():
 
 
 def generate_graph(batch, hardware, num_npus, node_id=0, instance_id=0, npu_offset=0, enable_local_offloading=False, event=False, workload_name=None, inputs_root=None, save_trace_text=False, *, trace):
+
+    from ..gr.trace import GRTrace, write_graph
+    if isinstance(trace, GRTrace):
+        if num_npus != 1 or npu_offset != 0 or not workload_name or not inputs_root:
+            raise ValueError("GR graphs require one NPU and explicit run/workload paths")
+        prefix = input_path(inputs_root, "workload", workload_name, "llm")
+        return write_graph(trace, prefix, save_trace_text)
+
+    from .trace_generator import indexed_cols, write_trace
 
     cwd = os.getcwd()
     if inputs_root is None:

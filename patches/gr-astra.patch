@@ -1,0 +1,78 @@
+diff --git a/astra-sim/network_frontend/analytical/congestion_aware/main.cc b/astra-sim/network_frontend/analytical/congestion_aware/main.cc
+index 4c67a80..f71ef92 100644
+--- a/astra-sim/network_frontend/analytical/congestion_aware/main.cc
++++ b/astra-sim/network_frontend/analytical/congestion_aware/main.cc
+@@ -149,6 +149,15 @@ int main(int argc, char* argv[]) {
+         std::remove(path.c_str()); 
+       }
+ 
++      // HBF/flash timing uses a distinct storage memory queue.
++      if (mem_json.contains("storage_mem") && mem_json["storage_mem"].is_object()) {
++        json j = mem_json["storage_mem"];
++        j["memory-location"] = "STORAGE_MEMORY";
++        auto path = save_json_to_tmp(j, "storage_mem");
++        memory_levels.push_back(std::make_unique<AnalyticalMemory>(path));
++        std::remove(path.c_str());
++      }
++
+       ::rmdir("tmp_mem");
+     }
+ 
+diff --git a/astra-sim/network_frontend/analytical/congestion_unaware/main.cc b/astra-sim/network_frontend/analytical/congestion_unaware/main.cc
+index eb39b71..63873a0 100644
+--- a/astra-sim/network_frontend/analytical/congestion_unaware/main.cc
++++ b/astra-sim/network_frontend/analytical/congestion_unaware/main.cc
+@@ -148,6 +148,15 @@ int main(int argc, char* argv[]) {
+         std::remove(path.c_str()); 
+       }
+ 
++      // HBF/flash timing uses a distinct storage memory queue.
++      if (mem_json.contains("storage_mem") && mem_json["storage_mem"].is_object()) {
++        json j = mem_json["storage_mem"];
++        j["memory-location"] = "STORAGE_MEMORY";
++        auto path = save_json_to_tmp(j, "storage_mem");
++        memory_levels.push_back(std::make_unique<AnalyticalMemory>(path));
++        std::remove(path.c_str());
++      }
++
+       ::rmdir("tmp_mem");
+     }
+ 
+diff --git a/astra-sim/system/Sys.cc b/astra-sim/system/Sys.cc
+index ff8cb15..0236481 100644
+--- a/astra-sim/system/Sys.cc
++++ b/astra-sim/system/Sys.cc
+@@ -179,8 +179,8 @@ Sys::Sys(int id,
+             this->cxl_mem->set_sys(id, this);
+         }
+         else if (loc == MemoryLocationType::STORAGE_MEMORY) {
+-            // currently do nothing
+             this->storage_mem = mem;
++            this->storage_mem->set_sys(id, this);
+         }
+         else {
+             std::cout << "location type " << (int)loc << std::endl;
+diff --git a/astra-sim/system/WorkloadLayerHandlerData.hh b/astra-sim/system/WorkloadLayerHandlerData.hh
+index 152dc30..8a92aec 100644
+--- a/astra-sim/system/WorkloadLayerHandlerData.hh
++++ b/astra-sim/system/WorkloadLayerHandlerData.hh
+@@ -19,6 +19,7 @@ class WorkloadLayerHandlerData : public BasicEventHandlerData, public MetaData {
+     Workload* workload;
+     uint64_t node_id;
+     uint32_t device_id;
++    bool is_write = false;
+     bool pim_enabled;
+     uint32_t pim_channel_id;
+     uint64_t pim_runtime;
+diff --git a/astra-sim/workload/Workload.cc b/astra-sim/workload/Workload.cc
+index abdd3a5..b3c8f72 100644
+--- a/astra-sim/workload/Workload.cc
++++ b/astra-sim/workload/Workload.cc
+@@ -212,6 +212,7 @@ void Workload::issue_mem(shared_ptr<Chakra::ETFeederNode> node) {
+     wlhd->workload = this;
+     wlhd->node_id = node->id();
+     wlhd->device_id = node->tensor_device();
++    wlhd->is_write = node->type() == ChakraNodeType::MEM_STORE_NODE;
+     if (node->type() == ChakraNodeType::PIM_COMP_NODE) { // pim implementation
+         wlhd->pim_enabled = true;
+         wlhd->pim_channel_id = node->tensor_channel();
